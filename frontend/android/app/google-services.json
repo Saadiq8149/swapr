@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "679522669762",
+    "project_id": "swapr-abe64",
+    "storage_bucket": "swapr-abe64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:679522669762:android:1c0d55fab3bb28187f175b",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD63iPywqcGYNFxdb4EJ7VMxO9PePOgtjk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
