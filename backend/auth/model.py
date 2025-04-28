@@ -2,9 +2,10 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 class UserBase(BaseModel):
-    username: str
+    # username: str
     email: EmailStr
     phone_number: str
+    trial_uses: int = 2
 
 class UserCreate(UserBase):
     password: str

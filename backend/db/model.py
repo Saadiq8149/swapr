@@ -2,10 +2,11 @@ from sqlmodel import Field, SQLModel
 from typing import Optional
 
 class UserBaseModel(SQLModel):
-    username: str = Field(index=True)
+    # username: str = Field(index=True)
     email: str = Field(index=True, unique=True)
     phone_number: str = Field(index=True, unique=True)
     name: str
+    trial_uses: int = 2
 
 class UserCreate(UserBaseModel):
     hashed_password: str
@@ -63,6 +64,6 @@ class Payment(SQLModel, table=True):
     payment_id: str
     user_id: int = Field(foreign_key="user.id")
     swap_request_id: Optional[int] = Field(foreign_key="swaprequest.id")
-    amount: float = 10
+    amount: float = 15
     status: str = "Paid"
     refund_id: Optional[str] = None

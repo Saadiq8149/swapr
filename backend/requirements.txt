@@ -10,3 +10,4 @@ passlib
 python-dotenv
 requests
 python-multipart
+pycryptodome

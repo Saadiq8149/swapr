@@ -29,35 +29,65 @@ class _WillingToSwapPage extends State<WillingToSwapPage> {
   int _currentStep = 1;
   Map<String, dynamic>? pnrDetails;
   List<dynamic> fetchedPassengers = [];
-  bool isLoading = false;
   List<Map<String, dynamic>> choicesList = [];
 
+  bool isLoading = false;
+  String loadingMessage = "Please wait...";
+
+  // Show loading overlay
+  void showLoading([String? message]) {
+    if (!mounted) return;
+    setState(() {
+      isLoading = true;
+      if (message != null) {
+        loadingMessage = message;
+      }
+    });
+  }
+
+  // Hide loading overlay
+  void hideLoading() {
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+    });
+  }
+
   Future<void> fetchPNRDetails(BuildContext context, String pnr) async {
-    if (pnr.isEmpty) {
-      // ignore: use_build_context_synchronously
-      showErrorAlert("Please fill in all fields", context);
-      setState(() {
-        isLoading = false;
-      });
-    } else if (pnr.length == 10) {
-      final url = Uri(
-        scheme: 'https',
-        host: 'swapr-saadiq8149-saadiq8149s-projects.vercel.app',
-
-        path: '/pnr',
-        queryParameters: {'pnr': pnr},
-      );
-      // final token = await FlutterSessionJwt.retrieveToken();
-      final response = await http.get(url);
-      final responseBody = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
+    showLoading("Fetching PNR Details...");
+    try {
+      if (pnr.isEmpty) {
+        // ignore: use_build_context_synchronously
+        showErrorAlert("Please fill in all fields", context);
         setState(() {
-          fetchedPassengers = responseBody['passengerDetails'];
-          pnrDetails = responseBody;
-          _currentStep = 2;
           isLoading = false;
         });
+      } else if (pnr.length == 10) {
+        final url = Uri(
+          scheme: 'https',
+          host: 'swapr-saadiq8149-saadiq8149s-projects.vercel.app',
+
+          path: '/pnr',
+          queryParameters: {'pnr': pnr},
+        );
+        // final token = await FlutterSessionJwt.retrieveToken();
+        final response = await http.get(url);
+        final responseBody = jsonDecode(response.body);
+
+        if (response.statusCode == 200) {
+          setState(() {
+            fetchedPassengers = responseBody['passengerDetails'];
+            pnrDetails = responseBody;
+            _currentStep = 2;
+            isLoading = false;
+          });
+        } else {
+          // ignore: use_build_context_synchronously
+          showErrorAlert("Invalid PNR Number", context);
+          setState(() {
+            isLoading = false;
+          });
+        }
       } else {
         // ignore: use_build_context_synchronously
         showErrorAlert("Invalid PNR Number", context);
@@ -65,441 +95,500 @@ class _WillingToSwapPage extends State<WillingToSwapPage> {
           isLoading = false;
         });
       }
-    } else {
+    } catch (error) {
       // ignore: use_build_context_synchronously
-      showErrorAlert("Invalid PNR Number", context);
+      showErrorAlert("An error occurred. Please try again.", context);
       setState(() {
         isLoading = false;
       });
+    } finally {
+      hideLoading();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     List<String> steps = ["PNR", "Select", "Confirm"];
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.grey[50],
-        leading: null,
-        title: Center(
-          child: StepProgressIndicator(
-            totalSteps: 3,
-            currentStep: _currentStep,
-            size: 36,
-            selectedColor: Color(0xff1B56FD),
-            unselectedColor: Colors.grey,
-            customStep:
-                (index, color, _) =>
-                    color == Color(0xff1B56FD)
-                        ? Container(
-                          color: color,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                color: Colors.white,
-                                size: 12,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  steps[index],
-                                  style: TextStyle(
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.grey[50],
+            leading: null,
+            title: Center(
+              child: StepProgressIndicator(
+                totalSteps: 3,
+                currentStep: _currentStep,
+                size: 36,
+                selectedColor: Color(0xff1B56FD),
+                unselectedColor: Colors.grey,
+                customStep:
+                    (index, color, _) =>
+                        color == Color(0xff1B56FD)
+                            ? Container(
+                              color: color,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
                                     color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    size: 12,
                                   ),
-                                ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      steps[index],
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        )
-                        : Container(
-                          color: Colors.grey[300],
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.remove,
-                                color: Color(0xff3D3D3D),
-                                size: 12,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: Text(
-                                  steps[index],
-                                  style: TextStyle(
+                            )
+                            : Container(
+                              color: Colors.grey[300],
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.remove,
                                     color: Color(0xff3D3D3D),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    size: 12,
                                   ),
-                                ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: Text(
+                                      steps[index],
+                                      style: TextStyle(
+                                        color: Color(0xff3D3D3D),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+              ),
+            ),
           ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.2),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.directions_subway_sharp,
-                              color: Color(0xff1B56FD),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: Text(
-                                "Enter PNR Number",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              onTapOutside:
-                                  (event) => FocusScope.of(context).unfocus(),
-                              keyboardType: TextInputType.number,
-                              onChanged: (value) {
-                                pnr = value;
-                              },
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                ),
-                                hintText: 'Enter PNR',
-                                hintStyle: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                                contentPadding: EdgeInsets.fromLTRB(
-                                  10,
-                                  0,
-                                  10,
-                                  0,
-                                ),
-                              ),
-                            ),
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withValues(alpha: 0.2),
+                            spreadRadius: 2,
+                            blurRadius: 5,
+                            offset: Offset(0, 3),
                           ),
-                          isLoading
-                              ? Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: CircularProgressIndicator(
+                        ],
+                      ),
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.directions_subway_sharp,
                                   color: Color(0xff1B56FD),
-                                  strokeWidth: 5,
-                                  backgroundColor: Colors.white,
                                 ),
-                              )
-                              : Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      isLoading = true;
-                                    });
-                                    fetchPNRDetails(context, pnr);
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    backgroundColor: Color(0xff1B56FD),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6.0),
-                                    ),
-                                  ),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
                                   child: Text(
-                                    "Fetch",
+                                    "Enter PNR Number",
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
                                   ),
                                 ),
-                              ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              (pnrDetails != null && _currentStep >= 2)
-                  ? Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withValues(alpha: 0.2),
-                                spreadRadius: 2,
-                                blurRadius: 5,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          padding: EdgeInsets.all(20),
-                          child: Column(
+                          Row(
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.directions_subway_sharp,
-                                      color: Color(0xff1B56FD),
+                              Expanded(
+                                child: TextField(
+                                  onTapOutside:
+                                      (event) =>
+                                          FocusScope.of(context).unfocus(),
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    pnr = value;
+                                  },
+                                  decoration: InputDecoration(
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
                                     ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8.0),
+                                    hintText: 'Enter PNR',
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 14,
+                                    ),
+                                    contentPadding: EdgeInsets.fromLTRB(
+                                      10,
+                                      0,
+                                      10,
+                                      0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              isLoading
+                                  ? Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xff1B56FD),
+                                      strokeWidth: 5,
+                                      backgroundColor: Colors.white,
+                                    ),
+                                  )
+                                  : Padding(
+                                    padding: const EdgeInsets.only(left: 8.0),
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          isLoading = true;
+                                        });
+                                        fetchPNRDetails(context, pnr);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        backgroundColor: Color(0xff1B56FD),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            6.0,
+                                          ),
+                                        ),
+                                      ),
                                       child: Text(
-                                        pnrDetails!['trainName'],
+                                        "Fetch",
                                         style: TextStyle(
-                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
                                           fontSize: 16,
                                         ),
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  (pnrDetails != null && _currentStep >= 2)
+                      ? Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withValues(alpha: 0.2),
+                                    spreadRadius: 2,
+                                    blurRadius: 5,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                              Column(
+                              padding: EdgeInsets.all(20),
+                              child: Column(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.calendar_month,
-                                        color: Colors.grey,
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 8.0,
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.directions_subway_sharp,
+                                          color: Color(0xff1B56FD),
                                         ),
-                                        child: Text(
-                                          pnrDetails!["dateOfJourney"],
-                                          style: TextStyle(
-                                            color: Colors.grey,
-                                            fontWeight: FontWeight.bold,
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 8.0,
+                                          ),
+                                          child: Text(
+                                            pnrDetails!['trainName'],
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                  Row(
+                                  Column(
                                     children: [
-                                      Text(
-                                        "From: ",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 8.0,
-                                        ),
-                                        child: Text(
-                                          pnrDetails!["fromStation"],
-                                          style: TextStyle(
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_month,
                                             color: Colors.grey,
-                                            fontWeight: FontWeight.bold,
                                           ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "To:      ",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 8.0,
-                                        ),
-                                        child: Text(
-                                          pnrDetails!["toStation"],
-                                          style: TextStyle(
-                                            color: Colors.grey,
-                                            fontWeight: FontWeight.bold,
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(
+                                              pnrDetails!["dateOfJourney"],
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            "From: ",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(
+                                              pnrDetails!["fromStation"],
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            "To:      ",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
+                                            child: Text(
+                                              pnrDetails!["toStation"],
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            children: [
-                              passengersAvailable(fetchedPassengers)
-                                  ? Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text(
-                                      'Select Passengers for Seat Swap',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  )
-                                  : Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text(
-                                      'No Confirmed Seats for this PNR',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                      ),
-                                    ),
-                                  ),
-                              ListView.builder(
-                                shrinkWrap: true,
-                                itemBuilder: (context, index) {
-                                  return fetchedPassengers[index]['confirmed']
-                                      ? PassengerSelect(
-                                        index,
-                                        fetchedPassengers,
-                                        pnrDetails!['coaches'],
-                                        fetchedPassengers[index]['coach'],
-                                        (Map<String, dynamic> choice) {
-                                          for (dynamic i in choicesList) {
-                                            if (i['index'] == choice['index']) {
-                                              choicesList.remove(i);
-                                              choicesList.add(choice);
-                                              return;
-                                            }
-                                          }
-                                          choicesList.add(choice);
-                                        },
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
+                                  passengersAvailable(fetchedPassengers)
+                                      ? Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        child: Text(
+                                          'Select Passengers for Seat Swap',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
                                       )
-                                      : Row();
-                                },
-                                itemCount: fetchedPassengers.length,
-                                physics: NeverScrollableScrollPhysics(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          mainAxisAlignment:
-                              passengersAvailable(fetchedPassengers)
-                                  ? MainAxisAlignment.spaceAround
-                                  : MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                backgroundColor: Color(0xff3D3D3D),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6.0),
-                                ),
-                              ),
-                              child: Text(
-                                " Cancel ",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
+                                      : Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        child: Text(
+                                          'No Confirmed Seats for this PNR',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                      ),
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    itemBuilder: (context, index) {
+                                      return fetchedPassengers[index]['confirmed']
+                                          ? PassengerSelect(
+                                            index,
+                                            fetchedPassengers,
+                                            pnrDetails!['coaches'],
+                                            fetchedPassengers[index]['coach'],
+                                            (Map<String, dynamic> choice) {
+                                              for (dynamic i in choicesList) {
+                                                if (i['index'] ==
+                                                    choice['index']) {
+                                                  choicesList.remove(i);
+                                                  choicesList.add(choice);
+                                                  return;
+                                                }
+                                              }
+                                              choicesList.add(choice);
+                                            },
+                                          )
+                                          : Row();
+                                    },
+                                    itemCount: fetchedPassengers.length,
+                                    physics: NeverScrollableScrollPhysics(),
+                                  ),
+                                ],
                               ),
                             ),
-                            passengersAvailable(fetchedPassengers)
-                                ? ElevatedButton(
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              mainAxisAlignment:
+                                  passengersAvailable(fetchedPassengers)
+                                      ? MainAxisAlignment.spaceAround
+                                      : MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton(
                                   onPressed: () {
-                                    // Handle confirm action
-                                    // You can add your logic here
-                                    submitSwapRequest(
-                                      context,
-                                      pnrDetails,
-                                      pnr,
-                                      choicesList,
-                                    );
+                                    Navigator.pop(context);
                                   },
                                   style: ElevatedButton.styleFrom(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 16,
                                       vertical: 12,
                                     ),
-                                    backgroundColor: Color(0xff1B56FD),
+                                    backgroundColor: Color(0xff3D3D3D),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6.0),
                                     ),
                                   ),
                                   child: Text(
-                                    "Confirm",
+                                    " Cancel ",
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
                                     ),
                                   ),
-                                )
-                                : Row(),
-                          ],
+                                ),
+                                passengersAvailable(fetchedPassengers)
+                                    ? ElevatedButton(
+                                      onPressed: () {
+                                        // Handle confirm action
+                                        // You can add your logic here
+                                        submitSwapRequest(
+                                          context,
+                                          pnrDetails,
+                                          pnr,
+                                          choicesList,
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        backgroundColor: Color(0xff1B56FD),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            6.0,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        "Confirm",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    )
+                                    : Row(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                      : Row(),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (isLoading)
+          Container(
+            color: Colors.black.withOpacity(0.5),
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+            child: Center(
+              child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xff1B56FD),
+                          ),
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        loadingMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
-                  )
-                  : Row(),
-            ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+      ],
     );
   }
 }

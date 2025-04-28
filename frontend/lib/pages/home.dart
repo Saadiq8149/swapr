@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:expandable/expandable.dart';
 import 'package:flutter_session_jwt/flutter_session_jwt.dart';
+import 'package:loader_overlay/loader_overlay.dart';
 import 'landing.dart';
 import 'swap_request.dart';
 import 'willing_swap.dart';
@@ -32,165 +33,37 @@ class _HomePageState extends State<HomePage> {
   dynamic swapRequests = [];
   dynamic swapSubmissions = [];
   dynamic userDetails;
+  bool isLoading = false;
+  String loadingMessage = "Loading...";
   final serverAddress = "swapr-saadiq8149-saadiq8149s-projects.vercel.app";
 
-  Future<void> fetchSwapRequests() async {
-    final token = await FlutterSessionJwt.retrieveToken();
-    final url = Uri(
-      scheme: 'https',
-      host: serverAddress,
-
-      path: '/getswaprequests',
-      queryParameters: {'token': token},
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      // Assuming the response body is a JSON array
-      final result = json.decode(response.body)['swap_requests'];
-      for (dynamic x in result) {
-        if (x['status'] == "Expired") {
-          deleteRequest(x['id'].toString());
-          return;
-        }
+  // Show loading overlay
+  void showLoading([String? message]) {
+    if (!mounted) return;
+    setState(() {
+      isLoading = true;
+      if (message != null) {
+        loadingMessage = message;
       }
-      setState(() {
-        swapRequests = result;
-      });
-    } else {
-      showErrorAlert("Network Error", context);
-    }
+    });
   }
 
-  Future<void> fetchSwapSubmissions() async {
-    final token = await FlutterSessionJwt.retrieveToken();
-    final url = Uri(
-      scheme: 'https',
-      host: serverAddress,
-
-      path: '/getswapsubmissions',
-      queryParameters: {'token': token},
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      // Assuming the response body is a JSON array
-      final result = json.decode(response.body)['swap_requests'];
-      setState(() {
-        swapSubmissions = result;
-      });
-    } else {
-      showErrorAlert("Network Error", context);
-    }
+  // Hide loading overlay
+  void hideLoading() {
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+    });
   }
 
-  Future<void> deleteRequest(String id) async {
-    final token = await FlutterSessionJwt.retrieveToken();
-    final url = Uri(
-      scheme: 'https',
-      host: serverAddress,
-
-      path: '/deleteswaprequest',
-      queryParameters: {'token': token, 'id': id},
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      // Assuming the response body is a JSON array
-      fetchSwapSubmissions();
-      fetchSwapRequests();
-    } else {
-      showErrorAlert("Network Error", context);
-    }
-  }
-
-  Future<void> deleteSubmission(String id) async {
-    final token = await FlutterSessionJwt.retrieveToken();
-    final url = Uri(
-      scheme: 'https',
-      host: serverAddress,
-
-      path: '/deleteswapsubmission',
-      queryParameters: {'token': token, 'id': id},
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      // Assuming the response body is a JSON array
-      final result = json.decode(response.body)['swap_requests'];
-      setState(() {
-        swapSubmissions = result;
-      });
-    } else {
-      showErrorAlert("Network Error", context);
-    }
-  }
-
-  Future<void> declineSwap(String id) async {
-    final token = await FlutterSessionJwt.retrieveToken();
-    final url = Uri(
-      scheme: 'https',
-      host: serverAddress,
-
-      path: '/declineswap',
-      queryParameters: {'token': token, 'id': id},
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      // Assuming the response body is a JSON array
-      final result = json.decode(response.body)['swap_requests'];
-      // setState(() {
-      //   swapSubmissions = result;
-      // });
-      fetchSwapRequests();
-      fetchSwapSubmissions();
-    } else {
-      showErrorAlert("Network Error", context);
-    }
-  }
-
-  Future<void> acceptSwap(String id) async {
-    final token = await FlutterSessionJwt.retrieveToken();
-    final url = Uri(
-      scheme: 'https',
-      host: serverAddress,
-
-      path: '/acceptswap',
-      queryParameters: {'token': token, 'id': id},
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      // Assuming the response body is a JSON array
-      final result = json.decode(response.body)['swap_requests'];
-      // setState(() {
-      //   swapSubmissions = result;
-      // });
-      fetchSwapRequests();
-      fetchSwapSubmissions();
-    } else {
-      showErrorAlert("Network Error", context);
-    }
-  }
-
-  Future<void> fetchUserDetails(BuildContext context) async {
-    dynamic token = await FlutterSessionJwt.retrieveToken();
-    if (token == null) {
-      showErrorAlert("Session expired", context);
-      return;
-    } else {
+  Future<void> fetchSwapRequests() async {
+    showLoading("Fetching data...."); // Show loader
+    try {
+      final token = await FlutterSessionJwt.retrieveToken();
       final url = Uri(
         scheme: 'https',
         host: serverAddress,
-
-        path: '/getuser',
+        path: '/getswaprequests',
         queryParameters: {'token': token},
       );
 
@@ -198,292 +71,541 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         // Assuming the response body is a JSON array
-        final result = json.decode(response.body)['user'];
+        final result = json.decode(response.body)['swap_requests'];
+        for (dynamic x in result) {
+          if (x['status'] == "Expired") {
+            deleteRequest(x['id'].toString());
+            return;
+          }
+        }
         setState(() {
-          userDetails = result;
+          swapRequests = result;
         });
       } else {
         showErrorAlert("Network Error", context);
       }
+    } catch (e) {
+      showErrorAlert("An error occurred", context);
+    } finally {
+      hideLoading(); // Hide loader
+    }
+  }
+
+  Future<void> fetchSwapSubmissions() async {
+    showLoading("Fetching submissions..."); // Show loader
+    try {
+      final token = await FlutterSessionJwt.retrieveToken();
+      final url = Uri(
+        scheme: 'https',
+        host: serverAddress,
+
+        path: '/getswapsubmissions',
+        queryParameters: {'token': token},
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body)['swap_requests'];
+        setState(() {
+          swapSubmissions = result;
+        });
+      } else {
+        showErrorAlert("Network Error", context);
+      }
+    } catch (e) {
+      showErrorAlert("An error occurred", context);
+    } finally {
+      hideLoading(); // Hide loader
+    }
+  }
+
+  Future<void> deleteRequest(String id) async {
+    showLoading("Deleting request..."); // Show loader
+    try {
+      final token = await FlutterSessionJwt.retrieveToken();
+      final url = Uri(
+        scheme: 'https',
+        host: serverAddress,
+
+        path: '/deleteswaprequest',
+        queryParameters: {'token': token, 'id': id},
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        fetchSwapRequests();
+        fetchSwapSubmissions();
+      } else {
+        showErrorAlert(response.body, context);
+      }
+    } catch (e) {
+      showErrorAlert("An error occurred", context);
+    } finally {
+      hideLoading(); // Hide loader
+    }
+  }
+
+  Future<void> deleteSubmission(String id) async {
+    showLoading("Deleting submission..."); // Show loader
+    try {
+      final token = await FlutterSessionJwt.retrieveToken();
+      final url = Uri(
+        scheme: 'https',
+        host: serverAddress,
+
+        path: '/deleteswapsubmission',
+        queryParameters: {'token': token, 'id': id},
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body)['swap_requests'];
+        setState(() {
+          swapSubmissions = result;
+        });
+      } else {
+        showErrorAlert("Network Error", context);
+      }
+    } catch (e) {
+      showErrorAlert("An error occurred", context);
+    } finally {
+      hideLoading(); // Hide loader
+    }
+  }
+
+  Future<void> declineSwap(String id) async {
+    showLoading("Declining swap..."); // Show loader
+    try {
+      final token = await FlutterSessionJwt.retrieveToken();
+      final url = Uri(
+        scheme: 'https',
+        host: serverAddress,
+
+        path: '/declineswap',
+        queryParameters: {'token': token, 'id': id},
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        fetchSwapRequests();
+        fetchSwapSubmissions();
+      } else {
+        showErrorAlert("Network Error", context);
+      }
+    } catch (e) {
+      showErrorAlert("An error occurred", context);
+    } finally {
+      hideLoading(); // Hide loader
+    }
+  }
+
+  Future<void> acceptSwap(String id) async {
+    showLoading("Fetching rewards :)..."); // Show loader
+    try {
+      final token = await FlutterSessionJwt.retrieveToken();
+      final url = Uri(
+        scheme: 'https',
+        host: serverAddress,
+
+        path: '/acceptswap',
+        queryParameters: {'token': token, 'id': id},
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        fetchSwapRequests();
+        fetchSwapSubmissions();
+      } else {
+        showErrorAlert("Network Error", context);
+      }
+    } catch (e) {
+      showErrorAlert("An error occurred", context);
+    } finally {
+      hideLoading(); // Hide loader
+    }
+  }
+
+  Future<void> fetchUserDetails(BuildContext context) async {
+    try {
+      dynamic token = await FlutterSessionJwt.retrieveToken();
+      if (token == null) {
+        showErrorAlert("Session expired", context);
+        return;
+      } else {
+        final url = Uri(
+          scheme: 'https',
+          host: serverAddress,
+
+          path: '/getuser',
+          queryParameters: {'token': token},
+        );
+
+        final response = await http.get(url);
+
+        if (response.statusCode == 200) {
+          final result = json.decode(response.body)['user'];
+          setState(() {
+            userDetails = result;
+          });
+        } else {
+          showErrorAlert("Network Error", context);
+        }
+      }
+    } catch (e) {
+      showErrorAlert("An error occurred", context);
     }
   }
 
   @override
   void initState() {
     super.initState();
-    fetchSwapRequests();
-    fetchSwapSubmissions();
-    fetchUserDetails(context);
+    // Delay to allow the widget to be fully built before showing loader
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await Future.wait([
+          fetchSwapRequests(),
+          fetchSwapSubmissions(),
+          fetchUserDetails(context),
+        ]);
+      } catch (error) {
+        if (mounted) {
+          showErrorAlert("Error loading data", context);
+        }
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.grey[50],
-        leading: null,
-        toolbarHeight: 50,
-        title: Padding(
-          padding: const EdgeInsets.only(top: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: const Text(
-                  "swapR",
-                  style: TextStyle(
-                    color: Color(0xff1B56FD),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Row(
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.grey[50],
+            leading: null,
+            toolbarHeight: 50,
+            title: Padding(
+              padding: const EdgeInsets.only(top: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () {
-                      fetchSwapRequests();
-                      fetchSwapSubmissions();
-                    },
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: const Text(
+                      "swapR",
+                      style: TextStyle(
+                        color: Color(0xff1B56FD),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.person),
-                    onPressed:
-                        () => showDialog(
-                          context: context,
-                          builder:
-                              (BuildContext context) => AlertDialog(
-                                backgroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                title: const Text("User Profile"),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 10,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.person,
-                                            color: Color(0xff1B56FD),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 8.0,
-                                            ),
-                                            child: Text(
-                                              "User Name: ",
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          Flexible(
-                                            child: Text(
-                                              userDetails != null
-                                                  ? userDetails["name"]
-                                                  : "",
-                                              style: TextStyle(fontSize: 16),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () {
+                          fetchSwapRequests();
+                          fetchSwapSubmissions();
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.person),
+                        onPressed:
+                            () => showDialog(
+                              context: context,
+                              builder:
+                                  (BuildContext context) => AlertDialog(
+                                    backgroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(5),
                                     ),
-                                    Row(
+                                    title: const Text("User Profile"),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(
-                                          Icons.email,
-                                          color: Color(0xff1B56FD),
-                                        ),
                                         Padding(
                                           padding: const EdgeInsets.only(
-                                            left: 8.0,
+                                            bottom: 10,
                                           ),
-                                          child: Text(
-                                            "Email: ",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.person,
+                                                color: Color(0xff1B56FD),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  left: 8.0,
+                                                ),
+                                                child: Text(
+                                                  "Name: ",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                              Flexible(
+                                                child: Text(
+                                                  userDetails != null
+                                                      ? userDetails["name"]
+                                                      : "",
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        Flexible(
-                                          child: Text(
-                                            userDetails != null
-                                                ? userDetails["email"]
-                                                : "",
-                                            style: TextStyle(fontSize: 16),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.email,
+                                              color: Color(0xff1B56FD),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 8.0,
+                                              ),
+                                              child: Text(
+                                                "Email: ",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ),
+                                            Flexible(
+                                              child: Text(
+                                                userDetails != null
+                                                    ? userDetails["email"]
+                                                    : "",
+                                                style: TextStyle(fontSize: 16),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                                actions: <Widget>[
-                                  TextButton(
-                                    child: const Text("Cancel"),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
+                                    actions: <Widget>[
+                                      TextButton(
+                                        child: const Text("Cancel"),
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                      TextButton(
+                                        child: const Text("Logout"),
+                                        onPressed: () {
+                                          logout(context);
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                  TextButton(
-                                    child: const Text("Logout"),
-                                    onPressed: () {
-                                      logout(context);
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                ],
-                              ),
-                        ),
+                            ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
+            // actions: [
+            //   IconButton(
+            //     onPressed: () {
+            //       // logout();
+            //     },
+            //     icon: const Icon(Icons.person),
+            //   ),
+            // ],
+            // centerTitle: true,
           ),
-        ),
-        // actions: [
-        //   IconButton(
-        //     onPressed: () {
-        //       // logout();
-        //     },
-        //     icon: const Icon(Icons.person),
-        //   ),
-        // ],
-        // centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.only(
-            top: 30.0,
-            right: 20,
-            bottom: 20,
-            left: 20,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 0.0),
-                      child: Text(
-                        "Your Swap Submissions",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => WillingToSwapPage(),
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: 30.0,
+                right: 20,
+                bottom: 20,
+                left: 20,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 0.0),
+                          child: Text(
+                            "Your Swap Submissions",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
-                          );
-                        },
-                        icon: Icon(Icons.add, color: Colors.white), // "+" icon
-                        label: Text(
-                          "New Swap",
-                          style: TextStyle(color: Colors.white),
-                        ), // Button text
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xff1B56FD), // Button color
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
                           ),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemBuilder: (context, index) {
-                  return swapSubmissionCard(
-                    index,
-                    swapSubmissions,
-                    deleteSubmission,
-                    declineSwap,
-                    acceptSwap,
-                  );
-                },
-                itemCount: swapSubmissions.length,
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 0.0),
-                      child: Text(
-                        "Your Swap Requests",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => SwapRequestPage(),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10.0),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => WillingToSwapPage(),
+                                ),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.add,
+                              color: Colors.white,
+                            ), // "+" icon
+                            label: Text(
+                              "New Swap",
+                              style: TextStyle(color: Colors.white),
+                            ), // Button text
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(
+                                0xff1B56FD,
+                              ), // Button color
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
                             ),
-                          );
-                        },
-                        icon: Icon(Icons.add, color: Colors.white), // "+" icon
-                        label: Text(
-                          "New Request",
-                          style: TextStyle(color: Colors.white),
-                        ), // Button text
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xff1B56FD), // Button color
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return swapSubmissionCard(
+                        index,
+                        swapSubmissions,
+                        deleteSubmission,
+                        declineSwap,
+                        acceptSwap,
+                      );
+                    },
+                    itemCount: swapSubmissions.length,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 0.0),
+                          child: Text(
+                            "Your Swap Requests",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10.0),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => SwapRequestPage(),
+                                ),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.add,
+                              color: Colors.white,
+                            ), // "+" icon
+                            label: Text(
+                              "New Request",
+                              style: TextStyle(color: Colors.white),
+                            ), // Button text
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(
+                                0xff1B56FD,
+                              ), // Button color
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return swapRequestCard(
+                        index,
+                        swapRequests,
+                        deleteRequest,
+                        context,
+                      );
+                    },
+                    itemCount: swapRequests.length,
+                  ),
+                ],
               ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemBuilder: (context, index) {
-                  return swapRequestCard(
-                    index,
-                    swapRequests,
-                    deleteRequest,
-                    context,
-                  );
-                },
-                itemCount: swapRequests.length,
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        if (isLoading)
+          Container(
+            color: Colors.black.withOpacity(0.5),
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+            child: Center(
+              child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xff1B56FD),
+                          ),
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        loadingMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -737,7 +859,7 @@ Widget swapRequestCard(
                                 ),
                                 SizedBox(height: 10),
                                 Text(
-                                  "Upon cancelling, you will be refunded 50% of your money.",
+                                  "Upon cancelling, you will be refunded ₹10 of your money.",
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey[600],
